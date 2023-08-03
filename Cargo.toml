@@ -1,0 +1,29 @@
+[package]
+authors = ["Tim/Wang Ye <geniusnut@gmail.com>"]
+name = "image_demo"
+version = "0.1.0"
+edition = "2021"
+description = "OFD invoice to image"
+readme = "README.md"
+keywords = ["OFD", "发票", "png"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+image = "0.24.5"
+jbig2dec = "0.3"
+imageproc = "0.23"
+compress = "0.2.1"
+zip = "0.6.3"
+log = "0.4.17"
+env_logger = "0.10.0"
+xmltree = "0.10.3"
+roxmltree = "0.16.0"
+raqote = { path = "../raqote", version = "0.8.1"}
+minifb = "0.23.0"
+font-kit = "0.10.1"
+lazy_static = "1.4.0"
+
+
+[[bin]]
+name = "ofd_demo"
