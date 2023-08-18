@@ -381,6 +381,73 @@ mod tests {
     use crate::utils::node_draw::{FONT_FAMILY_NAME_MAP, get_font_from_family_name};
     use super::{delta_to_vec, OfdColor};
     use super::{abbreviate_data, draw_abbreviate_path, };
+    #[test]
+    fn test_dt_matrix() {
+        let mut dt = DrawTarget::new(400, 400);
+        dt.fill_rect(0., 0., 400., 400., &Source::Solid( SolidSource{r: 0xff,
+            g: 0xff,
+            b: 0xff,
+            a: 0xff,}), &DrawOptions::new());
+        let p_size = 1.0;
+        dt.fill_rect(200.-p_size, 200.-p_size, p_size*2., p_size*2., &Source::Solid( SolidSource{
+            r: 0x00,
+            g: 0x00,
+            b: 0x00,
+            a: 0xff,}), &DrawOptions::new());
+
+        let font = get_font_from_family_name("Kaiti");
+        let boundary = PhysicalBox {
+            x: 200.0,
+            y: 200.0,
+            width: 70.0,
+            height: 40.0,
+        };
+        //  [0.323729, -0.944243, 0.9342, 0.327214, 0.0, 0.0], text: 全
+        let v = vec![0.323729, -0.944243, 0.9342, 0.327214, 0.0, 0.0];
+        let ctm = Transform::new(
+            v[0], v[1], v[2], v[3], v[4], v[5],
+        );
+        let mm = Transform::identity()
+            .pre_translate(Vector::new(-boundary.x, -boundary.y))
+            .then(&ctm)
+            .then_translate(Vector::new(boundary.x, boundary.y))
+            ;
+        dt.fill_rect(boundary.x, boundary.y, boundary.width, boundary.height, &Source::Solid( SolidSource{
+            r: 0x34,
+            g: 0x98,
+            b: 0xb2,
+            a: 0xff,}), &DrawOptions::new());
+        dt.set_transform(&mm);
+        dt.fill_rect(boundary.x, boundary.y, boundary.width, boundary.height, &Source::Solid( SolidSource{r: 0xff,
+            g: 0x0,
+            b: 0xff,
+            a: 0xff,}), &DrawOptions::new());
+        let point_size = 3.;
+        let ids = vec![font.glyph_for_char('全').unwrap()];
+        let positions = vec![Point::new(200., 200.); 0];
+        let options = DrawOptions::new();
+        // dt.set_transform(&Transform::identity());
+
+        dt.draw_glyphs(&font, point_size, &ids, &positions, &Source::Solid( SolidSource{
+            r: 0x34,
+            g: 0x98,
+            b: 0xb2,
+            a: 0xff,}), &options);
+        dt.draw_text(
+            &font,
+            24.,
+            "全",
+            Point::new(200., 200.),
+            &Source::Solid(SolidSource {
+                r: 0,
+                g: 0,
+                b: 0xff,
+                a: 0xff,
+            }),
+            &DrawOptions::new(),
+        );
+        dt.write_png("test.png").unwrap();
+    }
 
     #[test]
     fn test_delta_to_vec() {
