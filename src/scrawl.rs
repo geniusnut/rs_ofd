@@ -15,11 +15,13 @@ fn is_hello<T: AsRef<str>>(t: T) {
 }
 
 #[derive(Copy)]
-struct M { a: i32}
+struct M {
+    a: i32,
+}
 
 impl Clone for M {
     fn clone(&self) -> Self {
-        M {a: self.a}
+        M { a: self.a }
     }
 }
 
@@ -45,7 +47,6 @@ fn vector_is_prime(num: u64, vec: Vec<u64>) -> bool {
 #[derive(Debug)]
 struct Borrowed<'a>(&'a i32);
 
-
 fn first_word<'a>(s: &'a str) -> &str {
     let bytes = s.as_bytes();
     for (i, &item) in bytes.iter().enumerate() {
@@ -60,21 +61,22 @@ struct A {
     a: i32,
 }
 
-
 #[cfg(test)]
 mod tests {
+    use crate::scrawl::{
+        abs_all, first_word, int_mut, int_mut_ref, is_hello, vector_is_prime, A, M,
+    };
     use std::borrow::Cow;
     use std::ops::Deref;
-    use crate::scrawl::{A, abs_all, first_word, int_mut, int_mut_ref, is_hello, M, vector_is_prime};
 
     #[test]
     fn test_block() {
         let mut a: Option<A> = None;
         {
-            let b = A{ a:3};
+            let b = A { a: 3 };
             a = Some(b);
         }
-        println!("a: {:?}",  a);
+        println!("a: {:?}", a);
     }
 
     #[test]
@@ -123,5 +125,4 @@ mod tests {
         let s = first_word("hello rustacean");
         println!("first_word: {}", s);
     }
-
 }

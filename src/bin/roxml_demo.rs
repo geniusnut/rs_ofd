@@ -1,15 +1,14 @@
+use image_demo::ofd::OFD_XML;
+use roxmltree::{Document, Node};
 use std::borrow::Borrow;
 use std::fs;
 use std::io::Read;
-use roxmltree::{Document, Node};
-use image_demo::ofd::OFD_XML;
 
 fn main() {
     std::process::exit(real_main());
 }
 
-struct OFDDoc1 {
-}
+struct OFDDoc1 {}
 
 fn real_main() -> i32 {
     let args: Vec<_> = std::env::args().collect();

@@ -4,8 +4,8 @@ use image::{GenericImageView, Rgb, RgbImage};
 use imageproc::drawing::draw_antialiased_line_segment_mut;
 use imageproc::pixelops::interpolate;
 
-use std::path::Path;
 use jbig2dec::Document;
+use std::path::Path;
 
 fn main() {
     // let arg = if env::args().count() == 2 {
@@ -32,7 +32,11 @@ fn main() {
         let dyn_image = image::load_from_memory(&img).expect("convert to DynamicImage failed");
 
         // The dimensions method returns the images width and height.
-        println!("dimensions {:?}, data_size: {}", dyn_image.dimensions(), dyn_image.as_bytes().len());
+        println!(
+            "dimensions {:?}, data_size: {}",
+            dyn_image.dimensions(),
+            dyn_image.as_bytes().len()
+        );
 
         // The color method returns the image's `ColorType`.
         println!("{:?}", dyn_image.color());
