@@ -1,6 +1,5 @@
 use std::result;
-use euclid::Transform2D;
-use crate::node_draw::RaqoteDrawBackend;
+use crate::raqote_draw::RaqoteDrawBackend;
 use crate::skia_draw::SkiaBackend;
 use crate::ofd::{Appearance, ImageObject, PathObject, PhysicalBox, TextObject};
 
@@ -18,7 +17,16 @@ pub struct Transform {
     pub(crate) m31: f32, pub(crate) m32: f32,
 }
 
-#[cfg(feature = "raqote")]
+impl Transform {
+    pub(crate) fn identity() -> Self {
+        Transform {
+            m11: 1.0, m12: 0.0,
+            m21: 0.0, m22: 1.0,
+            m31: 0.0, m32: 0.0,
+        }
+    }
+}
+
 impl From<raqote::Transform> for Transform {
     fn from(value: raqote::Transform) -> Self {
         Transform {
@@ -40,6 +48,9 @@ pub trait DrawBackend {
 
     fn draw_boundary(&mut self, boundary: &PhysicalBox);
     fn save(&mut self) -> Transform;
+
+    fn scale(&mut self);
+
     fn restore(&mut self, transform: &Transform);
 
     fn draw_path_object(&mut self, draw_param_id: Option<&String>, path_object: &PathObject);
@@ -51,6 +62,6 @@ pub fn new_draw_backend(width: i32, height: i32) -> Box<dyn DrawBackend> {
     if cfg!(feature = "raqote") {
         Box::new(RaqoteDrawBackend::new(width, height))
     } else {
-        Box::new(SkiaBackend::new())
+        Box::new(SkiaBackend::new(width, height))
     }
 }

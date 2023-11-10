@@ -1,13 +1,12 @@
 #![allow(dead_code)]
 
 use std::collections::HashMap;
-use crate::node_draw::{boundary_to_rect, draw_ele_recursive, draw_image_object, draw_path_object, draw_text_object, get_font_from_family_name, MUTEX_IMAGE_RES, MUTEX_RES_DRAW_PARAMS, MUTEX_RGB_IMAGE_RES, PPMM, RES_FONT_ID_MAP};
+use crate::node_draw::{boundary_to_rect, get_font_from_family_name, MUTEX_IMAGE_PNG_RES, MUTEX_IMAGE_RES, MUTEX_RES_DRAW_PARAMS, MUTEX_RGB_IMAGE_RES, PPMM, RES_FONT_ID_MAP};
 use font_kit::family_name::FamilyName;
 use font_kit::font::Font;
 use font_kit::properties::{Properties, Weight};
 use font_kit::source::SystemSource;
 use jbig2dec::Document;
-use raqote::{DrawOptions, DrawTarget, SolidSource, Source, Transform, Vector};
 use send_wrapper::SendWrapper;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fs::File;
@@ -20,7 +19,7 @@ use zip::read::ZipFile;
 use zip::result::ZipError;
 use zip::{read, ZipArchive};
 use crate::backends;
-use crate::backends::{DrawBackend};
+use crate::backends::{DrawBackend, Transform};
 
 pub const OFD_XML: &'static str = "OFD.xml";
 pub const OFD_NAMESPACE_URL: &'static str = "http://www.ofdspec.org/2016";
@@ -184,15 +183,22 @@ impl OFDFile {
                         let dyn_image = image::load_from_memory(&buf)
                             .expect("convert to DynamicImage failed")
                             .into_rgba8();
+                        MUTEX_IMAGE_PNG_RES
+                            .lock()
+                            .unwrap()
+                            .insert(String::from(v), buf);
                         MUTEX_RGB_IMAGE_RES
                             .lock()
                             .unwrap()
                             .insert(String::from(v), dyn_image);
-                    } else if (*file.name()).ends_with(".jpg") || (*file.name()).ends_with(".jpeg")
-                    {
+                    } else if (*file.name()).ends_with(".jpg") || (*file.name()).ends_with(".jpeg") {
                         let dyn_image = image::load_from_memory(&buf)
                             .expect("convert to DynamicImage failed")
                             .into_rgba8();
+                        MUTEX_IMAGE_PNG_RES
+                            .lock()
+                            .unwrap()
+                            .insert(String::from(v), buf);
                         MUTEX_RGB_IMAGE_RES
                             .lock()
                             .unwrap()
@@ -209,6 +215,10 @@ impl OFDFile {
                             .lock()
                             .unwrap()
                             .insert(String::from(v), dyn_image);
+                        MUTEX_IMAGE_PNG_RES
+                            .lock()
+                            .unwrap()
+                            .insert(String::from(v), img);
                     }
                 }
             }
@@ -302,6 +312,7 @@ pub struct Appearance {
 impl Appearance {
     fn draw(&self, backend: &mut dyn DrawBackend) {
         let transform = backend.save();
+        backend.scale();
         backend.draw_boundary(&self.boundary);
 
         if let Some(image_object) = &self.image_object {
@@ -513,14 +524,11 @@ pub struct OFDLayer {
 impl OFDLayer {
     fn draw(&self, backend: &mut dyn DrawBackend) {
         println!("draw layer with draw_param: {:?}", self.draw_param_id);
+        backend.save();
+        backend.scale();
         if let Some(path_objects) = &self.path_object {
             for path_object in path_objects {
                 backend.draw_path_object(self.draw_param_id.as_ref(), &path_object);
-            }
-        }
-        if let Some(image_objects) = &self.image_object {
-            for image_object in image_objects {
-                backend.draw_image_object(&image_object);
             }
         }
         if let Some(text_objects) = &self.text_object {
@@ -528,6 +536,13 @@ impl OFDLayer {
                 backend.draw_text_object(self.draw_param_id.as_ref(), &text_object);
             }
         }
+
+        if let Some(image_objects) = &self.image_object {
+            for image_object in image_objects {
+                backend.draw_image_object(&image_object);
+            }
+        }
+        backend.restore(&Transform::identity());
     }
 }
 
