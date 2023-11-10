@@ -20,17 +20,15 @@ fn main() {
 fn real_main() -> i32 {
     let args: Vec<_> = std::env::args().collect();
     if args.len() < 2 {
-        println!("Usage: {} <filename.ofd>", args[0]);
+        println!("Usage: {} <filename.ofd> ...", args[0]);
         return 1;
     }
-
-    let ofd_file: &mut OFDFile = &mut OFDFile::new(&*args[1]);
-
-    // let ofd_doc = ofd_file.ofd_doc.clone().unwrap();
-    // println!("ofd_doc: {:#?}", ofd_doc);
-
-    // print_type_of(&MUTEX_IMAGE_RES.lock().unwrap().values());
-
-    ofd_file.draw();
+    args.iter().skip_while(|arg| {
+        !arg.ends_with(".ofd")
+    }).for_each(|arg| {
+        println!("arg: {}", arg);
+        let mut ofd_file = OFDFile::new(arg);
+        ofd_file.draw();
+    });
     0
 }

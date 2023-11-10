@@ -10,10 +10,8 @@ use jbig2dec::Document;
 use send_wrapper::SendWrapper;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fs::File;
-use std::io;
 use std::io::{Cursor, Read, Seek};
 use std::path::Path;
-use std::ptr::hash;
 use xmltree::Element;
 use zip::read::ZipFile;
 use zip::result::ZipError;
@@ -144,6 +142,10 @@ impl OFDFile {
             RES_FONT_ID_MAP.lock().unwrap().insert(
                 font.id.clone(),
                 SendWrapper::new(get_font_from_family_name(family_name.as_str())),
+            );
+            RES_FONT_FAMILY_NAME_MAP.lock().unwrap().insert(
+                font.id.clone(),
+                family_name.clone(),
             );
         }
         println!("RES_FONT_ID_MAP: {:?}", RES_FONT_ID_MAP.lock().unwrap());

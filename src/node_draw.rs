@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::sync::Mutex;
 
-const SONGTI_LIST: &[&str] = &["Songti", "STSong", "SimSong", "FangSong", "Songti SC"];
+const SONGTI_LIST: &[&str] = &["SimSun", "NSimSun", "Songti", "STSong", "SimSong", "FangSong", "Songti SC"];
 const KAITI_LIST: &[&str] = &["KaiTi", "Kai"];
 
 lazy_static! {
@@ -34,14 +34,21 @@ lazy_static! {
         Mutex::new(m)
     };
 
+    pub static ref RES_FONT_FAMILY_NAME_MAP: Mutex<HashMap<String, String>> = {
+        let m = HashMap::new();
+        Mutex::new(m)
+    };
+
     pub static ref RES_FONT_ID_MAP: Mutex<HashMap<String, SendWrapper<Font>>> = {
         let m = HashMap::new();
         Mutex::new(m)
     };
+
     pub static ref FONT_NAME_2_FONT_MAP: Mutex<HashMap<String, SendWrapper<Font>>> = {
         let m = HashMap::new();
         Mutex::new(m)
     };
+
     pub static ref FONT_FAMILY_NAME_MAP: HashMap<String, &'static [&'static str]> = {
         let mut m = HashMap::new();
         m.insert("宋体".to_string(), SONGTI_LIST);

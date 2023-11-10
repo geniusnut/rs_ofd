@@ -3,9 +3,8 @@ use skia_safe::{Canvas, Color, Data, EncodedImageFormat, Font, FontStyle, Image,
 use crate::backends::{DrawBackend, Transform};
 use crate::ofd::{Appearance, ImageObject, PathObject, PhysicalBox, TextObject};
 use std::io::{Read, Write};
-use skia_safe::path_measure::MatrixFlags;
 use crate::backends::DrawError::OutputError;
-use crate::node_draw::{_PathToken, abbreviate_data, delta_to_vec, get_color_from_draw_param, MUTEX_IMAGE_PNG_RES, MUTEX_IMAGE_RES, MUTEX_RES_DRAW_PARAMS, MUTEX_RGB_IMAGE_RES, ofd_color_from_v, OfdColor, PathToken, PPMM, RES_FONT_ID_MAP, Tag};
+use crate::node_draw::{_PathToken, abbreviate_data, delta_to_vec, get_color_from_draw_param, MUTEX_IMAGE_PNG_RES, MUTEX_IMAGE_RES, MUTEX_RES_DRAW_PARAMS, MUTEX_RGB_IMAGE_RES, ofd_color_from_v, OfdColor, PathToken, PPMM, RES_FONT_FAMILY_NAME_MAP, RES_FONT_ID_MAP, Tag};
 
 
 pub struct SkiaBackend {
@@ -30,6 +29,23 @@ impl From<Matrix> for Transform {
 impl From<OfdColor> for Color {
     fn from(ofd_color: OfdColor) -> Self {
         Color::from_argb(ofd_color.a, ofd_color.r, ofd_color.g, ofd_color.b)
+    }
+}
+
+struct CTM(Option<String>);
+
+impl CTM {
+    fn to_matrix(&self) -> Matrix {
+        self.0.clone().map_or(
+            *Matrix::i(),
+            |s| {
+                let vec: Vec<f32> = s.split_whitespace().map(|s| s.parse().unwrap()).collect();
+                Matrix::new_all(
+                    vec[0], vec[1], vec[4],
+                    vec[2], vec[3], vec[5],
+                    0.0, 0.0, 1.0
+                )
+            })
     }
 }
 
@@ -65,16 +81,17 @@ impl DrawBackend for SkiaBackend {
     }
 
     fn draw_boundary(&mut self, boundary: &PhysicalBox) {
+        println!("draw_boundary: {:?}", boundary);
         self.surface.canvas().translate((boundary.x, boundary.y));
-    }
-
-    fn scale(&mut self) {
-        self.surface.canvas().scale((PPMM, PPMM));
     }
 
     fn save(&mut self) -> Transform {
         self.surface.canvas().save();
         self.surface.canvas().local_to_device_as_3x3().into()
+    }
+
+    fn scale(&mut self) {
+        self.surface.canvas().scale((PPMM, PPMM));
     }
 
     fn restore(&mut self, transform: &Transform) {
@@ -94,30 +111,13 @@ impl DrawBackend for SkiaBackend {
     }
 
     fn draw_image_object(&mut self, image_object: &ImageObject) {
-        println!("draw_image_object: {:#?}", image_object);
+        // println!("draw_image_object: {:#?}", image_object);
         let _id  = image_object.id.clone();
         let img_file = MUTEX_IMAGE_RES.lock().unwrap().get(image_object.resource_id.as_str()).unwrap().clone();
         let png_data = MUTEX_IMAGE_PNG_RES.lock().unwrap().get(&img_file).unwrap().clone();
-        // let img = MUTEX_RGB_IMAGE_RES.lock().unwrap().get(&img_file).unwrap().clone();
-        // let pixels = img.pixels().into_iter().map(
-        //     |it| *it
-        // ).collect::<Vec<u8>>();
-        // let pixels: Vec<u8> = img.pixels().flat_map(
-        //     |pixel| vec![pixel[0], pixel[1], pixel[2], pixel[3]]
-        // ).collect();
-        // println!("pixels length: {:?}", pixels.len());
-        // let image = images::raster_from_data(
-        //     &ImageInfo::new(
-        //         (img.width() as i32, img.height() as i32),
-        //         skia_safe::ColorType::RGBA8888,
-        //         skia_safe::AlphaType::Premul,
-        //         None
-        //     ),
-        //     Data::new_copy(pixels.as_slice()),
-        //     img.width() as usize * 3,
-        // );
+
         let image = Image::from_encoded(Data::new_copy(png_data.as_slice())).unwrap();
-        println!("image: {:?}", image);
+        // println!("image: {:?}", image);
 
         let boundary = image_object.boundary.clone();
         self.surface.canvas().draw_image_rect(
@@ -144,17 +144,8 @@ fn draw_text_object(surface: &mut Surface, draw_param_id: Option<&String>, text_
     let font = RES_FONT_ID_MAP.lock().unwrap().get(font_id.as_str()).unwrap().clone().take();
 
     // println!("draw_text_object {:?}, {:?}: {:?}", &dp_fill_color, &fill_color, text_object);
-    let ctm: Matrix = text_object.ctm.clone().map_or(
-        *Matrix::i(),
-        |s| {
-            let vec: Vec<f32> = s.split_whitespace().map(|s| s.parse().unwrap()).collect();
-            Matrix::new_all(
-                vec[0], vec[1], vec[4],
-                vec[2], vec[3], vec[5],
-                0.0, 0.0, 1.0
-            )
-        });
 
+    let ctm: Matrix = CTM(text_object.ctm.clone()).to_matrix();
     let text_code = text_object.text_code.clone();
     let mut iter_delta_x = text_code.delta_x.map_or(
         vec![0.; text_code.text.len()].into_iter(),
@@ -217,10 +208,8 @@ fn draw_path_object(surface: &mut Surface, draw_param_id: Option<&String>, path_
 
     // println!("draw_path_object: {:?}", path_object);
     let path = abbreviate_data(&path_object.abbreviated_data);
-    // let ctm = path_object.ctm.clone().map_or(
-    //     Transform::identity(),
-    //     |s| attr_to_transform(&s)
-    // );
+    // vec[0], -vec[1], -vec[2], vec[3], vec[4], vec[5],
+    let ctm: Matrix = CTM(path_object.ctm.clone()).to_matrix();
 
     let stroke_color = path_object.stroke_color.clone().map_or(
         draw_param.as_ref().map_or(
@@ -346,17 +335,18 @@ mod tests {
         surface.canvas().clear(Color::WHITE);
 
         let mut stack = surface.canvas().save();
-        println!("stack: {stack}");
+        assert_eq!(stack, 1);
         surface.canvas().scale((2.0, 2.0));
+        surface.canvas().translate((50, 50));
 
         stack = surface.canvas().save();
-        println!("stack: {stack}");
+        println!("save 2 stack: {stack}");
         surface.canvas().translate((10, 10));
         surface.canvas().draw_rect(Rect::from_point_and_size((0, 0), (100, 100)), &paint);
         surface.canvas().restore();
-        println!("stack: {stack}");
 
-        surface.canvas().save();
+        stack = surface.canvas().save();
+        println!("save 2 stack: {stack}");
         surface.canvas().translate((100, 100));
         paint.set_color(Color::RED);
         surface.canvas().draw_rect(Rect::from_point_and_size((0, 0), (100, 100)), &paint);
@@ -364,9 +354,18 @@ mod tests {
 
         surface.canvas().restore();
 
+        stack = surface.canvas().save();
+        println!("save 1 stack: {stack}");
         paint.set_color(Color::BLACK);
         surface.canvas().translate((10, 10));
         surface.canvas().draw_rect(Rect::from_point_and_size((0, 0), (100, 100)), &paint);
+        surface.canvas().restore();
+
+        println!("stack: {stack}");
+        paint.set_color(Color::GREEN);
+        surface.canvas().draw_circle((120, 120), 5.0, &paint);
+        surface.canvas().draw_circle((300, 300), 5.0, &paint);
+        surface.canvas().draw_circle((10, 10), 5.0, &paint);
 
         let image = surface.image_snapshot();
         let d = image.encode(surface.direct_context().as_mut(),

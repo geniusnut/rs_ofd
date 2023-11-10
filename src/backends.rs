@@ -11,6 +11,7 @@ pub enum DrawError {
     OutputError(String),
 }
 
+#[derive(Debug)]
 pub struct Transform {
     pub(crate) m11: f32, pub(crate) m12: f32,
     pub(crate) m21: f32, pub(crate) m22: f32,
@@ -18,7 +19,7 @@ pub struct Transform {
 }
 
 impl Transform {
-    pub(crate) fn identity() -> Self {
+    pub fn identity() -> Self {
         Transform {
             m11: 1.0, m12: 0.0,
             m21: 0.0, m22: 1.0,
