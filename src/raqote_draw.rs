@@ -275,7 +275,7 @@ pub fn draw_text_object(dt: &mut DrawTarget, draw_param_id: Option<&String>, tex
         |s| delta_to_vec(&s).into_iter()
     );
 
-    println!("iter_delta_x: {:?}, iter_delta_y: {:?}", iter_delta_x, iter_delta_y);
+    // println!("iter_delta_x: {:?}, iter_delta_y: {:?}", iter_delta_x, iter_delta_y);
     let mut start_p = Point::new(text_code.x, text_code.y);
     start_p.x += boundary.x;
     start_p.y += boundary.y;
@@ -283,6 +283,7 @@ pub fn draw_text_object(dt: &mut DrawTarget, draw_param_id: Option<&String>, tex
     let point_size = size; // * PPMM
 
     let m = dt.get_transform().clone();
+    // println!("draw_text_object {:?} matrix: {:?}", text_object.text_code, m);
     if !ctm.eq(&Transform::identity()) {
         // WARNING: It's very wired when the ctm is not identity the x is -x in windows.
         start_p.x = -start_p.x + 2. * boundary.x;
@@ -466,7 +467,7 @@ pub fn draw_text(dt: &mut DrawTarget, element: &Element) {
 }
 
 pub fn draw_image_object(dt: &mut DrawTarget, image_object: &ImageObject) {
-    println!("draw_image_object: {:#?}", image_object);
+    // println!("draw_image_object: {:#?}", image_object);
     let _id  = image_object.id.clone();
     let img_file = MUTEX_IMAGE_RES.lock().unwrap().get(image_object.resource_id.as_str()).unwrap().clone();
     let img = MUTEX_RGB_IMAGE_RES.lock().unwrap().get(&img_file).unwrap().clone();
@@ -488,7 +489,7 @@ pub fn draw_image_object(dt: &mut DrawTarget, image_object: &ImageObject) {
     };
     let physical_box = image_object.boundary.clone();
 
-    println!("draw_image_object: {:?}", physical_box);
+    // println!("draw_image_object: {:?}", physical_box);
     dt.draw_image_with_size_at(
         physical_box.width,
         physical_box.height,
@@ -552,7 +553,7 @@ fn draw_abbreviate_path(
     #[allow(unused_variables)] fill_color: &OfdColor,
     stroke_color: &OfdColor,
 ) {
-    println!("draw_abbreviate_path:, {:?}", stroke_color);
+    // println!("draw_abbreviate_path:, {:?}", stroke_color);
     let mut idx = 0;
     let mut pb = PathBuilder::new();
     while idx < path.len() {
@@ -655,7 +656,7 @@ fn attr_to_transform(ctm: &String) -> Transform {
 
     Transform::new(
         // vec[0], vec[1], vec[2], vec[3], vec[4], vec[5],
-        vec[0], -vec[1], -vec[2], vec[3], vec[4], vec[5],
+        vec[0], vec[2], vec[1], vec[3], vec[4], vec[5],
     )
 }
 

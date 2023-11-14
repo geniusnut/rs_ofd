@@ -1,7 +1,9 @@
 use std::result;
+#[cfg(feature = "raqote")]
 use crate::raqote_draw::RaqoteDrawBackend;
+#[cfg(feature = "skia")]
 use crate::skia_draw::SkiaBackend;
-use crate::ofd::{Appearance, ImageObject, PathObject, PhysicalBox, TextObject};
+use crate::ofd::{ImageObject, PathObject, PhysicalBox, TextObject};
 
 pub type Result<T> = result::Result<T, DrawError>;
 
@@ -28,6 +30,7 @@ impl Transform {
     }
 }
 
+#[cfg(feature = "raqote")]
 impl From<raqote::Transform> for Transform {
     fn from(value: raqote::Transform) -> Self {
         Transform {
@@ -60,9 +63,13 @@ pub trait DrawBackend {
 }
 
 pub fn new_draw_backend(width: i32, height: i32) -> Box<dyn DrawBackend> {
-    if cfg!(feature = "raqote") {
-        Box::new(RaqoteDrawBackend::new(width, height))
-    } else {
+    #[cfg(feature = "skia")]
+    {
         Box::new(SkiaBackend::new(width, height))
     }
+    #[cfg(feature = "raqote")]
+    {
+        Box::new(RaqoteDrawBackend::new(width, height))
+    }
 }
+

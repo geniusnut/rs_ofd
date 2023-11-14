@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::ofd::{ImageObject, PathObject, PhysicalBox, TextObject, DrawParam, _Color, Appearance};
+use crate::ofd::{PhysicalBox, DrawParam};
 use font_kit::family_name::FamilyName;
 use font_kit::font::Font;
 use font_kit::properties::{Properties, Weight};
@@ -68,7 +68,7 @@ pub fn get_font_from_family_name(family_name: &str) -> Font {
                 .collect()
         },
     );
-    println!("family_name: {}, candidates: {:?}", family_name, k);
+    // println!("family_name: {}, candidates: {:?}", family_name, k);
     if FONT_NAME_2_FONT_MAP
         .lock()
         .unwrap()

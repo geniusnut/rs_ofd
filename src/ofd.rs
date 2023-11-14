@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 
 use std::collections::HashMap;
-use crate::node_draw::{boundary_to_rect, get_font_from_family_name, MUTEX_IMAGE_PNG_RES, MUTEX_IMAGE_RES, MUTEX_RES_DRAW_PARAMS, MUTEX_RGB_IMAGE_RES, PPMM, RES_FONT_ID_MAP};
+
+use crate::node_draw::{boundary_to_rect, get_font_from_family_name, MUTEX_IMAGE_PNG_RES, MUTEX_IMAGE_RES, MUTEX_RES_DRAW_PARAMS, MUTEX_RGB_IMAGE_RES, PPMM, RES_FONT_FAMILY_NAME_MAP, RES_FONT_ID_MAP};
 use font_kit::family_name::FamilyName;
 use font_kit::font::Font;
 use font_kit::properties::{Properties, Weight};
@@ -15,9 +16,9 @@ use std::path::Path;
 use xmltree::Element;
 use zip::read::ZipFile;
 use zip::result::ZipError;
-use zip::{read, ZipArchive};
+use zip::{ZipArchive};
 use crate::backends;
-use crate::backends::{DrawBackend, Transform};
+use crate::backends::{DrawBackend};
 
 pub const OFD_XML: &'static str = "OFD.xml";
 pub const OFD_NAMESPACE_URL: &'static str = "http://www.ofdspec.org/2016";
@@ -68,8 +69,8 @@ impl OFDFile {
         doc_body = Some(ofd_element.children[0].as_element().unwrap().clone());
 
         let doc_body_v = doc_body.unwrap();
-        let info = doc_body_v.get_child("DocInfo").expect("DocInfo not found");
-        // println!("DocInfo: {:?}", info);
+        let _info = doc_body_v.get_child("DocInfo").expect("DocInfo not found");
+        // println!("DocInfo: {:?}", _info);
 
         let doc_root = String::from(
             doc_body_v
@@ -148,7 +149,7 @@ impl OFDFile {
                 family_name.clone(),
             );
         }
-        println!("RES_FONT_ID_MAP: {:?}", RES_FONT_ID_MAP.lock().unwrap());
+        // println!("RES_FONT_ID_MAP: {:?}", RES_FONT_ID_MAP.lock().unwrap());
 
         let mut hashmap = HashMap::new();
         for draw_param in &ofd_doc.public_res.draw_params {
@@ -166,14 +167,12 @@ impl OFDFile {
             hashmap.insert(draw_param.id.clone(), draw_param);
         }
         for draw_param in MUTEX_RES_DRAW_PARAMS.lock().unwrap().values_mut() {
-            println!("expand draw_param: {:?}", draw_param.id);
             if let Some(relative) = draw_param.relative.clone() {
                 let relative_draw_param = hashmap.get(&relative).unwrap().clone();
-                println!("relative: {:?}", relative);
                 draw_param.update(&relative_draw_param);
             }
         }
-        println!("MUTEX_RES_DRAW_PARAMS: {:?}", MUTEX_RES_DRAW_PARAMS.lock().unwrap());
+        // println!("MUTEX_RES_DRAW_PARAMS: {:?}", MUTEX_RES_DRAW_PARAMS.lock().unwrap());
 
         for i in 0..self.archive.len() {
             let mut file = self.archive.by_index(i).unwrap();
@@ -266,7 +265,6 @@ impl OFDAnnotations {
     fn new(archive: &mut ZipArchive<File>, path: String) -> Self {
         // get dir from path
         let dir = Path::new(path.as_str()).parent().unwrap().to_str().unwrap();
-        println!("OFDAnnotation.new path: {:?}", dir);
 
         let mut file = archive.by_name(path.as_str()).unwrap();
         let mut buf: Vec<u8> = Vec::new();
@@ -314,7 +312,6 @@ pub struct Appearance {
 impl Appearance {
     fn draw(&self, backend: &mut dyn DrawBackend) {
         let transform = backend.save();
-        backend.scale();
         backend.draw_boundary(&self.boundary);
 
         if let Some(image_object) = &self.image_object {
@@ -525,9 +522,9 @@ pub struct OFDLayer {
 
 impl OFDLayer {
     fn draw(&self, backend: &mut dyn DrawBackend) {
-        println!("draw layer with draw_param: {:?}", self.draw_param_id);
-        backend.save();
-        backend.scale();
+        let transform = backend.save();
+        // println!("draw layer with draw_param: {:?}, transform: {:?}", self.draw_param_id, transform);
+        // backend.scale();
         if let Some(path_objects) = &self.path_object {
             for path_object in path_objects {
                 backend.draw_path_object(self.draw_param_id.as_ref(), &path_object);
@@ -544,7 +541,7 @@ impl OFDLayer {
                 backend.draw_image_object(&image_object);
             }
         }
-        backend.restore(&Transform::identity());
+        backend.restore(&transform);
     }
 }
 
@@ -656,7 +653,7 @@ impl OFDPage
             ofd_doc.physical_box.unwrap_or_default(),
             |area| area.physical_box
         );
-        println!("draw page p_box: {:?}", p_box);
+        // println!("draw page p_box: {:?}", p_box);
 
         p_box.width = p_box.width * PPMM;
         p_box.height = p_box.height * PPMM;
@@ -694,14 +691,14 @@ impl OFDPage
             }
         });
 
-        let mut seal_file: Option<ZipArchive<Cursor<Vec<u8>>>> = archive.by_name("Doc_0/Signs/Sign_0/SignedValue.dat")
+        let seal_file: Option<ZipArchive<Cursor<Vec<u8>>>> = archive.by_name("Doc_0/Signs/Sign_0/SignedValue.dat")
             .map_or(None, |mut file| {
             let mut buf: Vec<u8> = Vec::new();
             let _ = &file.read_to_end(&mut buf).unwrap();
             let buff = Cursor::new(buf);
             Some(ZipArchive::new(buff).unwrap())
         });
-        let mut stamp = archive.by_name("Doc_0/Signs/Sign_0/Signature.xml")
+        let stamp = archive.by_name("Doc_0/Signs/Sign_0/Signature.xml")
             .map_or(None, |mut file| {
             let signature_ele = Element::parse(&mut file).unwrap();
             let signed_info = signature_ele.get_child("SignedInfo").unwrap();
@@ -727,10 +724,10 @@ impl OFDPage
             }
             drop(z_f);
 
-            for j in 0..seal_archive.len() {
-                let seal_f = seal_archive.by_index(j).unwrap();
-                println!("seal_f: {:?}", seal_f.name());
-            }
+            // for j in 0..seal_archive.len() {
+            //     let seal_f = seal_archive.by_index(j).unwrap();
+            //     println!("seal_f: {:?}", seal_f.name());
+            // }
             // let seal_content = seal_archive.by_name("Doc_0/Pages/Page_0/Content.xml").unwrap();
             let seal_page = OFDPage::new(
                 &mut seal_archive,
@@ -738,7 +735,7 @@ impl OFDPage
                 0,
                 String::from("0"),
             );
-            println!("seal_page: {:?}", seal_page);
+            // println!("seal_page: {:?}", seal_page);
             let transform = backend.save();
             backend.draw_boundary(stamp.as_ref().unwrap());
             seal_page.content.draw(backend);

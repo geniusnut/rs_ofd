@@ -1,11 +1,12 @@
 use std::fs::File;
-use skia_safe::{Canvas, Color, Data, EncodedImageFormat, Font, FontStyle, Image, ImageInfo, images, Matrix, Paint, paint, PaintStyle, Path, Point, Rect, Surface, surfaces, TextBlob, TextBlobBuilder, Typeface};
-use crate::backends::{DrawBackend, Transform};
-use crate::ofd::{Appearance, ImageObject, PathObject, PhysicalBox, TextObject};
-use std::io::{Read, Write};
-use crate::backends::DrawError::OutputError;
-use crate::node_draw::{_PathToken, abbreviate_data, delta_to_vec, get_color_from_draw_param, MUTEX_IMAGE_PNG_RES, MUTEX_IMAGE_RES, MUTEX_RES_DRAW_PARAMS, MUTEX_RGB_IMAGE_RES, ofd_color_from_v, OfdColor, PathToken, PPMM, RES_FONT_FAMILY_NAME_MAP, RES_FONT_ID_MAP, Tag};
+use std::io::{Write};
 
+use skia_safe::{Color, Data, EncodedImageFormat, Font, FontStyle, Image, Matrix, Paint, paint, PaintStyle, Path, Point, Rect, Surface, surfaces, TextBlob, Typeface};
+
+use crate::backends::{DrawBackend, Transform};
+use crate::backends::DrawError::OutputError;
+use crate::node_draw::{_PathToken, abbreviate_data, delta_to_vec, get_color_from_draw_param, MUTEX_IMAGE_PNG_RES, MUTEX_IMAGE_RES, MUTEX_RES_DRAW_PARAMS, ofd_color_from_v, OfdColor, PathToken, PPMM, RES_FONT_ID_MAP, Tag};
+use crate::ofd::{ImageObject, PathObject, PhysicalBox, TextObject};
 
 pub struct SkiaBackend {
     pub surface: Surface,
@@ -32,17 +33,17 @@ impl From<OfdColor> for Color {
     }
 }
 
-struct CTM(Option<String>);
+struct AdapterCtm(Option<String>);
 
-impl CTM {
+impl AdapterCtm {
     fn to_matrix(&self) -> Matrix {
         self.0.clone().map_or(
             *Matrix::i(),
             |s| {
                 let vec: Vec<f32> = s.split_whitespace().map(|s| s.parse().unwrap()).collect();
                 Matrix::new_all(
-                    vec[0], vec[1], vec[4],
-                    vec[2], vec[3], vec[5],
+                    vec[0], vec[2], vec[4],
+                    vec[1], vec[3], vec[5],
                     0.0, 0.0, 1.0
                 )
             })
@@ -58,6 +59,7 @@ impl SkiaBackend {
         paint.set_anti_alias(true);
         paint.set_stroke_width(1.0);
         surface.canvas().clear(Color::WHITE);
+        surface.canvas().scale((PPMM, PPMM));
         SkiaBackend {
             surface,
             path,
@@ -81,7 +83,7 @@ impl DrawBackend for SkiaBackend {
     }
 
     fn draw_boundary(&mut self, boundary: &PhysicalBox) {
-        println!("draw_boundary: {:?}", boundary);
+        // println!("draw_boundary: {:?}", boundary);
         self.surface.canvas().translate((boundary.x, boundary.y));
     }
 
@@ -94,7 +96,7 @@ impl DrawBackend for SkiaBackend {
         self.surface.canvas().scale((PPMM, PPMM));
     }
 
-    fn restore(&mut self, transform: &Transform) {
+    fn restore(&mut self, _transform: &Transform) {
         self.surface.canvas().restore();
     }
 
@@ -129,7 +131,7 @@ impl DrawBackend for SkiaBackend {
 }
 
 fn draw_text_object(surface: &mut Surface, draw_param_id: Option<&String>, text_object: &TextObject) {
-    let (dp_fill_color, dp_stroke_color) = get_color_from_draw_param(draw_param_id);
+    let (dp_fill_color, _dp_stroke_color) = get_color_from_draw_param(draw_param_id);
 
     let boundary = text_object.boundary;
     let font_id = text_object.font.clone();
@@ -145,7 +147,7 @@ fn draw_text_object(surface: &mut Surface, draw_param_id: Option<&String>, text_
 
     // println!("draw_text_object {:?}, {:?}: {:?}", &dp_fill_color, &fill_color, text_object);
 
-    let ctm: Matrix = CTM(text_object.ctm.clone()).to_matrix();
+    let ctm: Matrix = AdapterCtm(text_object.ctm.clone()).to_matrix();
     let text_code = text_object.text_code.clone();
     let mut iter_delta_x = text_code.delta_x.map_or(
         vec![0.; text_code.text.len()].into_iter(),
@@ -209,7 +211,7 @@ fn draw_path_object(surface: &mut Surface, draw_param_id: Option<&String>, path_
     // println!("draw_path_object: {:?}", path_object);
     let path = abbreviate_data(&path_object.abbreviated_data);
     // vec[0], -vec[1], -vec[2], vec[3], vec[4], vec[5],
-    let ctm: Matrix = CTM(path_object.ctm.clone()).to_matrix();
+    let ctm: Matrix = AdapterCtm(path_object.ctm.clone()).to_matrix();
 
     let stroke_color = path_object.stroke_color.clone().map_or(
         draw_param.as_ref().map_or(
@@ -232,6 +234,8 @@ fn draw_path_object(surface: &mut Surface, draw_param_id: Option<&String>, path_
     );
 
     surface.canvas().translate((boundary.x, boundary.y));
+    surface.canvas().concat(&ctm);
+
     let mut new_path = Path::new();
     let mut idx = 0;
     while idx < path.len() {
@@ -319,6 +323,7 @@ fn draw_path_object(surface: &mut Surface, draw_param_id: Option<&String>, path_
 mod tests {
     use std::fs::File;
     use std::io::Write;
+
     use skia_safe::{Color, Paint, Rect, surfaces};
 
     #[test]

@@ -26,7 +26,7 @@ fn real_main() -> i32 {
     args.iter().skip_while(|arg| {
         !arg.ends_with(".ofd")
     }).for_each(|arg| {
-        println!("arg: {}", arg);
+        println!("Input ofd: {}", arg);
         let mut ofd_file = OFDFile::new(arg);
         ofd_file.draw();
     });
