@@ -24,9 +24,7 @@ log = "0.4.17"
 env_logger = "0.10.0"
 xmltree = "0.10.3"
 roxmltree = "0.18.0"
-raqote = { path = "../../git/raqote", version = "0.8.1", optional = true}
-#raqote = { version = "0.8.1" }
-#raqote = "0.8.2"
+raqote = { git="https://github.com/geniusnut/raqote.git", optional = true }
 font-kit = {version="0.11.0", features=["loader-freetype"]}
 lazy_static = "1.4.0"
 send_wrapper = "0.6.0"

@@ -64,7 +64,7 @@ impl DrawBackend for RaqoteDrawBackend {
     }
 
     fn draw_boundary(&mut self, boundary: &PhysicalBox) {
-        println!("draw boundary: {:#?}", boundary);
+        // println!("draw boundary: {:#?}", boundary);
         let trans = self.dt.get_transform().clone();
         let t = Transform::identity()
             .then_translate(Vector::new(boundary.x, boundary.y))
