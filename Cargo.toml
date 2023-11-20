@@ -10,7 +10,7 @@ keywords = ["OFD", "发票", "png"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["raqote"]
+default = ["skia"]
 skia = ["dep:skia-safe"]
 raqote = ["dep:raqote", "dep:sw-composite", "dep:euclid"]
 
