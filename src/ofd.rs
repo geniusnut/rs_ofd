@@ -93,12 +93,13 @@ impl OFDFile {
 
         self.ofd_doc = Some(OFDDoc {
             doc_root_path: doc_root_path.to_str().unwrap().to_string(),
-            template_pages: ofd_document.common_data.template_page.into_iter().map(|s|
+            template_pages: ofd_document.common_data.template_page.map(
+                |tp| tp.into_iter().map(|s|
                 TemplatePage {
                     id: s.id,
                     base_loc: format!("{}/{}", doc_root_path.to_str().unwrap(), s.base_loc),
                 }
-            ).collect(),
+            ).collect()),
             physical_box: ofd_document.common_data.page_area.map_or(None, |s| {
                 Some(s.physical_box)
             }),
@@ -235,7 +236,7 @@ impl OFDFile {
 #[derive(Debug, Clone)]
 pub struct OFDDoc {
     pub doc_root_path: String,
-    pub template_pages: Vec<TemplatePage>,
+    pub template_pages: Option<Vec<TemplatePage>>,
     pub physical_box: Option<PhysicalBox>,
     pub document_res: OFDRes,
     pub public_res: OFDRes,
@@ -517,6 +518,42 @@ pub struct OFDLayer {
     path_object: Option<Vec<PathObject>>,
     image_object: Option<Vec<ImageObject>>,
     text_object: Option<Vec<TextObject>>,
+
+    page_block: Option<Vec<PageBlock>>,
+}
+
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct PageBlock {
+    #[serde(rename = "@ID")]
+    id: String,
+
+    path_object: Option<Vec<PathObject>>,
+    image_object: Option<Vec<ImageObject>>,
+    text_object: Option<Vec<TextObject>>,
+}
+
+impl PageBlock {
+    fn draw(&self, backend: &mut dyn DrawBackend, draw_param_id: Option<String>) {
+        // println!("draw PageBlock: {:?}", self);
+        if let Some(path_objects) = &self.path_object {
+            for path_object in path_objects {
+                backend.draw_path_object(draw_param_id.as_ref(), &path_object);
+            }
+        }
+        if let Some(text_objects) = &self.text_object {
+            for text_object in text_objects {
+                backend.draw_text_object(draw_param_id.as_ref(), &text_object);
+            }
+        }
+
+        if let Some(image_objects) = &self.image_object {
+            for image_object in image_objects {
+                backend.draw_image_object(&image_object);
+            }
+        }
+    }
 }
 
 
@@ -539,6 +576,12 @@ impl OFDLayer {
         if let Some(image_objects) = &self.image_object {
             for image_object in image_objects {
                 backend.draw_image_object(&image_object);
+            }
+        }
+
+        if let Some(page_blocks) = &self.page_block {
+            for page_block in page_blocks {
+                page_block.draw(backend, self.draw_param_id.clone());
             }
         }
         backend.restore(&transform);
@@ -662,18 +705,21 @@ impl OFDPage
         let mut backend = binding.as_mut();
 
         if self.template.is_some() {
-            let template_path = ofd_doc.template_pages.clone().into_iter()
-                .find(|tpl| tpl.id == self.template.as_ref().unwrap().id)
-                .unwrap().base_loc;
+            let template_path: Option<String> = ofd_doc.template_pages.clone().map(
+                |pages| pages.into_iter().find(|tpl| tpl.id == self.template.as_ref().unwrap().id)
+                .unwrap().base_loc
+            );
             // Step.1 draw template
             // println!("template_path: {:?}", template_path);
-            let mut z_f = archive.by_name(template_path.as_str()).unwrap();
-            let mut s = String::new();
-            let _ = &z_f.read_to_string(&mut s).unwrap();
-            let content_page: ContentPage = quick_xml::de::from_str(s.as_str())
-                .expect("Failed to parse XML");
-            // println!("content_page: {:#?}", content_page);
-            content_page.content.draw(backend);
+            if template_path.is_some() {
+                let mut z_f = archive.by_name(template_path.unwrap().as_str()).unwrap();
+                let mut s = String::new();
+                let _ = &z_f.read_to_string(&mut s).unwrap();
+                let content_page: ContentPage = quick_xml::de::from_str(s.as_str())
+                    .expect("Failed to parse XML");
+                // println!("content_page: {:#?}", content_page);
+                content_page.content.draw(backend);
+            }
         }
 
         //     // Step.2 draw page
@@ -847,7 +893,7 @@ pub struct PageArea {
 pub struct CommonData {
     #[serde(rename = "MaxUnitID")]
     pub max_unit_id: u32,
-    pub template_page: Vec<TemplatePage>,
+    pub template_page: Option<Vec<TemplatePage>>,
     pub page_area: Option<PageArea>,
     pub public_res: String,
     pub document_res: String,
@@ -906,8 +952,7 @@ pub struct OFDDocument {
 
 #[cfg(test)]
 mod tests {
-    use crate::ofd::{CommonData, ContentPage, OFDAnnotations, OFDDocument, OFDMultiMedias, OFDPage, OFDRes, PageAnnot};
-    use image::io::Reader;
+    use crate::ofd::{ContentPage, OFDAnnotations, OFDDocument, OFDRes, PageAnnot};
     use std::io::BufReader;
 
     #[test]
