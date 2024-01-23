@@ -302,7 +302,7 @@ struct Annot {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Appearance {
-    #[serde(rename = "@Boundary")]
+    #[serde(rename = "@Boundary", default)]
     #[serde(deserialize_with = "deserialize_physical_box")]
     pub boundary: PhysicalBox,
 

@@ -14,6 +14,7 @@ use std::sync::Mutex;
 
 const SONGTI_LIST: &[&str] = &["SimSun", "NSimSun", "Songti", "STSong", "SimSong", "FangSong", "Songti SC"];
 const KAITI_LIST: &[&str] = &["KaiTi", "Kai"];
+const HEITI_LIST: &[&str] = &["SimHei", "Microsoft YaHei", "Heiti SC", "STHeiti", "Heiti TC",];
 
 lazy_static! {
     pub static ref MUTEX_RGB_IMAGE_RES: Mutex<HashMap<String, RgbaImage>> = {
@@ -55,6 +56,7 @@ lazy_static! {
         m.insert("Kai".to_string(), KAITI_LIST);
         m.insert("楷体".to_string(), KAITI_LIST);
         m.insert("KaiTi".to_string(), KAITI_LIST);
+        m.insert("黑体".to_string(), HEITI_LIST);
         m
     };
 }

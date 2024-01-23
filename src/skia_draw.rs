@@ -1,7 +1,8 @@
 use std::fs::File;
 use std::io::{Write};
 
-use skia_safe::{Color, Data, EncodedImageFormat, Font, FontStyle, Image, Matrix, Paint, paint, PaintStyle, Path, Point, Rect, Surface, surfaces, TextBlob, Typeface};
+use skia_safe::path::ArcSize;
+use skia_safe::{Color, Data, EncodedImageFormat, Font, FontStyle, Image, Matrix, Paint, paint, PaintStyle, Path, PathDirection, Point, Rect, Surface, surfaces, TextBlob, Typeface};
 
 use crate::backends::{DrawBackend, Transform};
 use crate::backends::DrawError::OutputError;
@@ -276,9 +277,17 @@ fn draw_path_object(surface: &mut Surface, draw_param_id: Option<&String>, path_
                 Some(PathToken {
                          tag: Tag::C,
                          token: _PathToken { op: 'A' },
-                     }) => {
-                    // pb.arc()
-                }
+                             }) => {
+                            let mut iter = path[idx + 1..idx + 8].iter().map(|pt| pt.token.v);
+                            idx += 7;
+                            let (rx, ry) = (iter.next().unwrap(), iter.next().unwrap());
+                            let x_axis_rotate = iter.next().unwrap();
+                            let large_arc = if (iter.next().unwrap() as u32) > 0 { ArcSize::Large } else { ArcSize::Small };
+                            let sweep = if (iter.next().unwrap() as i32) > 0 {PathDirection::CW} else {PathDirection::CCW};
+                            let (end_x, end_y) = (iter.next().unwrap(), iter.next().unwrap());
+
+                            new_path.arc_to_rotated((rx, ry), x_axis_rotate, large_arc, sweep, (end_x, end_y));
+                        }
                 Some(PathToken {
                          tag: Tag::C,
                          token: _PathToken { op: 'Q' },
